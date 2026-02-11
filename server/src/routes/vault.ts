@@ -77,6 +77,7 @@ router.post(
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const providedPassword = req.query.password as string | undefined;
 
     const { data: item, error } = await supabase
       .from('items')
@@ -88,24 +89,20 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Vault not found' });
     }
 
-    // ⏰ Expiry check
     if (new Date(item.expires_at) < new Date()) {
       return res.status(410).json({ error: 'Vault expired' });
     }
 
-    // ✅ Send data FIRST
+    // If password exists but not provided
+    if (item.password && item.password !== providedPassword) {
+      return res.status(403).json({ error: 'Password required or incorrect' });
+    }
+
+    // Send vault
     res.json(item);
 
-    // 🔥 ONE-TIME LOGIC (after response)
-    if (item.is_one_time) {
-      // delete file if exists
-      if (item.file_path) {
-        await supabase.storage
-          .from('vault')
-          .remove([item.file_path]);
-      }
-
-      // delete DB record
+    // Delete AFTER sending response (TEXT ONLY)
+    if (item.is_one_time && item.type === 'text') {
       await supabase
         .from('items')
         .delete()
@@ -113,7 +110,7 @@ router.get('/:id', async (req, res) => {
     }
 
   } catch (err: any) {
-    console.error('Vault read error:', err.message);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -121,7 +118,7 @@ router.get('/:id/download', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1️⃣ Fetch vault
+    // Fetch vault
     const { data: item, error } = await supabase
       .from('items')
       .select('*')
@@ -132,7 +129,7 @@ router.get('/:id/download', async (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    // 2️⃣ Download file
+    // Download file
     const { data, error: downloadError } = await supabase.storage
       .from('vault')
       .download(item.file_path);
@@ -141,21 +138,30 @@ router.get('/:id/download', async (req, res) => {
       return res.status(500).json({ error: 'Download failed' });
     }
 
-    // 3️⃣ Send file to client FIRST
+    // Send file to client FIRST
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="${item.file_name}"`
     );
     res.send(Buffer.from(await data.arrayBuffer()));
 
-    // 4️⃣ 🔥 AFTER sending, cleanup if one-time
-    // 🔥 ONE-TIME LOGIC (TEXT ONLY)
-  if (item.is_one_time && item.type === 'text') {
-    await supabase
-      .from('items')
-      .delete()
-      .eq('id', id);
+    //  AFTER sending, cleanup if one-time
+    //  ONE-TIME LOGIC (TEXT ONLY)
+  // AFTER sending file
+if (item.is_one_time) {
+
+  if (item.file_path) {
+    await supabase.storage
+      .from('vault')
+      .remove([item.file_path]);
   }
+
+  await supabase
+    .from('items')
+    .delete()
+    .eq('id', id);
+}
+
 
 
   } catch (err: any) {
