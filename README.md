@@ -305,32 +305,8 @@ http://localhost:3000
 * Centralized validation for access control.
 
 
-
-## Limitations
-
-
-
-* Passwords are currently stored as plain text.
-* No scheduled background cleanup process.
-* No authentication or user accounts.
-* No rate limiting implemented.
-
-
-
-## Future Improvements
-
-
-
-* Hash passwords using bcrypt.
-* Add request rate limiting.
-* Implement scheduled cleanup jobs.
-* Add file size validation.
-* Containerize with Docker.
-* Add deployment pipeline.
-
-
-
 ## Author
 
 Harsh Jain
+
 
