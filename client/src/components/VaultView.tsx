@@ -16,39 +16,58 @@ const VaultView: React.FC<VaultViewProps> = ({ id }) => {
 
   // 🔹 Fetch vault metadata
   useEffect(() => {
-    const loadVault = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/${id}`);
-        const data = await res.json();
+  const loadVault = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/${id}`);
+      const data = await res.json();
 
-        if (!res.ok) {
-          setError(data.error || 'Vault not found');
-          return;
-        }
-
-        setItem(data);
-
-        if (!data.password) {
-          setIsUnlocked(true);
-        }
-      } catch {
-        setError('Failed to load vault');
-      } finally {
-        setLoading(false);
+      if (res.status === 403) {
+        // Password required
+        setIsUnlocked(false);
+        return;
       }
-    };
 
-    loadVault();
-  }, [id]);
+      if (!res.ok) {
+        setError(data.error || 'Vault not found');
+        return;
+      }
 
-  // 🔐 Unlock password-protected vault
-  const handleUnlock = () => {
-    if (item?.password === passwordInput) {
+      // No password required → unlocked immediately
+      setItem(data);
       setIsUnlocked(true);
-    } else {
-      alert('Incorrect password');
+
+    } catch {
+      setError('Failed to load vault');
+    } finally {
+      setLoading(false);
     }
   };
+
+  loadVault();
+}, [id]);
+
+  // 🔐 Unlock password-protected vault
+const handleUnlock = async () => {
+  try {
+    const res = await fetch(
+      `${API_BASE}/${id}?password=${passwordInput}`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || 'Incorrect password');
+      return;
+    }
+
+    setItem(data);
+    setIsUnlocked(true);
+
+  } catch {
+    alert('Failed to unlock vault');
+  }
+};
+
 
   // 📥 Download file via SERVER
   const handleDownload = () => {
