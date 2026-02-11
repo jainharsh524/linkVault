@@ -10,7 +10,7 @@ router.post(
   upload.single('file'),
   async (req, res) => {
     console.log('BODY:', req.body);
-      console.log('FILE:', req.file);
+    console.log('FILE:', req.file);
     try {
 
       const type = req.body.type;
@@ -18,7 +18,6 @@ router.post(
       const password = req.body.password ?? null;
       const expires_at = req.body.expires_at;
 
-      // 🔑 convert string → boolean
       const is_one_time = req.body.is_one_time === 'true';
 
 
@@ -26,7 +25,6 @@ router.post(
       let file_name = null;
       let mime_type = null;
 
-      // 🔹 If file upload
       if (type === 'file' && req.file) {
         const safeName = req.file.originalname.replace(/\s+/g, '_');
         const storagePath = `${crypto.randomUUID()}-${safeName}`;
@@ -145,22 +143,19 @@ router.get('/:id/download', async (req, res) => {
     );
     res.send(Buffer.from(await data.arrayBuffer()));
 
-    //  AFTER sending, cleanup if one-time
-    //  ONE-TIME LOGIC (TEXT ONLY)
-  // AFTER sending file
-if (item.is_one_time) {
+    if (item.is_one_time) {
 
-  if (item.file_path) {
-    await supabase.storage
-      .from('vault')
-      .remove([item.file_path]);
-  }
+      if (item.file_path) {
+        await supabase.storage
+          .from('vault')
+          .remove([item.file_path]);
+      }
 
-  await supabase
-    .from('items')
-    .delete()
-    .eq('id', id);
-}
+      await supabase
+        .from('items')
+        .delete()
+        .eq('id', id);
+    }
 
 
 

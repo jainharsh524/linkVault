@@ -14,68 +14,66 @@ const VaultView: React.FC<VaultViewProps> = ({ id }) => {
   const [passwordInput, setPasswordInput] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
 
-  // 🔹 Fetch vault metadata
+  // Fetch vault metadata
   useEffect(() => {
-  const loadVault = async () => {
+    const loadVault = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/${id}`);
+        const data = await res.json();
+
+        if (res.status === 403) {
+          // Password required
+          setIsUnlocked(false);
+          return;
+        }
+
+        if (!res.ok) {
+          setError(data.error || 'Vault not found');
+          return;
+        }
+
+        // No password required → unlocked immediately
+        setItem(data);
+        setIsUnlocked(true);
+
+      } catch {
+        setError('Failed to load vault');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVault();
+  }, [id]);
+
+  // Unlock password-protected vault
+  const handleUnlock = async () => {
     try {
-      const res = await fetch(`${API_BASE}/${id}`);
+      const res = await fetch(
+        `${API_BASE}/${id}?password=${passwordInput}`
+      );
+
       const data = await res.json();
 
-      if (res.status === 403) {
-        // Password required
-        setIsUnlocked(false);
-        return;
-      }
-
       if (!res.ok) {
-        setError(data.error || 'Vault not found');
+        alert(data.error || 'Incorrect password');
         return;
       }
 
-      // No password required → unlocked immediately
       setItem(data);
       setIsUnlocked(true);
 
     } catch {
-      setError('Failed to load vault');
-    } finally {
-      setLoading(false);
+      alert('Failed to unlock vault');
     }
   };
 
-  loadVault();
-}, [id]);
 
-  // 🔐 Unlock password-protected vault
-const handleUnlock = async () => {
-  try {
-    const res = await fetch(
-      `${API_BASE}/${id}?password=${passwordInput}`
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || 'Incorrect password');
-      return;
-    }
-
-    setItem(data);
-    setIsUnlocked(true);
-
-  } catch {
-    alert('Failed to unlock vault');
-  }
-};
-
-
-  // 📥 Download file via SERVER
+  // Download file via SERVER
   const handleDownload = () => {
     if (!item) return;
     window.location.href = `${API_BASE}/${item.id}/download`;
   };
-
-  /* ---------------- UI STATES ---------------- */
 
   if (loading) {
     return (
@@ -112,8 +110,6 @@ const handleUnlock = async () => {
       </div>
     );
   }
-
-  /* ---------------- CONTENT ---------------- */
 
   return (
     <div className="max-w-4xl mx-auto py-12">

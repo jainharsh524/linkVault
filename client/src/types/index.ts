@@ -7,7 +7,7 @@ export interface VaultItem {
   id: string;
   type: VaultType;
 
-  content: string | null;     // ✅ FIXED
+  content: string | null;  
   file_path: string | null;
   file_name: string | null;
   mime_type?: string | null;
