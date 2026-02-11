@@ -1,121 +1,156 @@
-# 🔐 LinkVault — Secure File & Text Sharing with Expiry
+# LinkVault
 
-LinkVault is a **secure, ephemeral sharing platform** that allows users to share **text snippets or files** via a generated link with **automatic expiry**, **optional password protection**, and **one-time view support**.
+Secure file and text sharing with controlled access and automatic expiry.
 
-The project is built using a **clean client–server architecture**, with **React (frontend)** and **Node.js + Express (backend)**, and uses **Supabase** for storage and database management.
 
----
 
-## ✨ Features
+LinkVault is a full-stack application that allows users to share plain text or files through a generated private link. Each vault link supports expiry controls, optional password protection, and one-time access.
 
-### 🔒 Security-First Design
+The system is built with clear separation between client and server, ensuring that storage credentials and validation logic remain strictly backend-controlled.
 
-* Optional **password protection**
-* **One-time view** (content is destroyed after first access)
-* Automatic **expiry-based deletion**
-* Files never exposed directly to the client storage API
 
-### 📁 Content Support
 
-* Share **plain text**
-* Share **any file type**
-* Files stored securely in Supabase Storage
-* Metadata stored in Supabase PostgreSQL
+## Overview
 
-### 🔗 Smart Links
 
-* Each upload generates a **unique shareable link**
-* Supports direct browser access
-* Clean REST API structure
 
----
+LinkVault enables:
 
-## 🧱 Architecture Overview
+* Text sharing via secure link
+* File uploads with backend-managed storage
+* Default 10-minute expiry (configurable)
+* Optional password protection
+* One-time view links
+* Strict access via unique vault ID
+
+There is no public listing or searchable index of uploaded content.
+
+
+
+## Product Interface
+
+
+
+### Create a Secure Link
+
+Users can choose between plain text and file uploads. Expiry duration, optional password, and one-time access can be configured before generating the vault link.
+
+<p align="center">
+  <img src="./docs/upload-text.png" alt="Upload Text Interface" width="900"/>
+</p>
+
+
+
+### File Upload Support
+
+Files are uploaded securely through the backend and stored in a private Supabase bucket. The frontend does not interact directly with storage credentials.
+
+<p align="center">
+  <img src="./docs/upload-file.png" alt="File Upload Interface" width="900"/>
+</p>
+
+
+
+### Generated Vault Link
+
+After successful creation, a unique link is returned. Expiry details are displayed, and the link can be copied directly.
+
+<p align="center">
+  <img src="./docs/vault-link.png" alt="Generated Vault Link" width="900"/>
+</p>
+
+
+
+## Architecture
+
+
+
+LinkVault follows a client–server model:
 
 ```
-linkvault/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── UploadSection.tsx
-│   │   │   └── VaultView.tsx
-│   │   ├── pages/
-│   │   │   └── Vault.tsx
-│   │   ├── types/
-│   │   │   └── index.ts
-│   │   └── App.tsx
-│
-├── server/                 # Express backend
-│   ├── src/
-│   │   ├── routes/
-│   │   │   └── vault.ts
-│   │   ├── middleware/
-│   │   │   └── upload.ts
-│   │   ├── supabase.ts
-│   │   └── index.ts
-│
-└── README.md
+User
+  ↓
+React Client (Port 3000)
+  ↓
+Express API (Port 4000)
+  ↓
+Supabase Storage (Files)
+Supabase PostgreSQL (Metadata)
 ```
 
----
+All validation, upload handling, expiry enforcement, and deletion logic reside on the backend.
 
-## 🛠 Tech Stack
+The frontend never receives the Supabase service role key.
 
-### Frontend
 
-* **React + TypeScript**
-* React Router
-* Tailwind CSS
-* Fetch API
 
-### Backend
+## Application Flow
 
-* **Node.js**
-* **Express**
-* TypeScript
-* Multer (in-memory uploads)
 
-### Database & Storage
 
-* **Supabase PostgreSQL**
-* **Supabase Storage**
-* Service Role Key (server-side only)
+### Upload Flow
 
----
-
-## 🔄 Application Flow
-
-### Upload
-
-1. User selects **text or file**
-2. Sets expiry / password / one-time option
-3. Frontend sends `FormData` to backend
+1. User selects text or file.
+2. Expiry, password, and one-time options are configured.
+3. Frontend sends a `FormData` request to the backend.
 4. Backend:
 
-   * Uploads file to Supabase Storage (if any)
-   * Stores metadata in `items` table
-5. Backend returns a **vault ID**
-6. Frontend generates a shareable link
+   * Uploads file to Supabase Storage (if applicable)
+   * Stores metadata in PostgreSQL
+   * Applies default expiry if none is provided
+5. A unique vault ID is returned.
 
-### Access
 
-1. User opens the link
+
+### Access Flow
+
+1. User opens the vault link.
 2. Backend validates:
 
    * Vault existence
-   * Expiry
+   * Expiry timestamp
    * Password (if required)
-3. Content is returned
-4. If **one-time view**:
+3. Content is returned.
+4. If marked as one-time:
 
-   * File is deleted
-   * Database row is deleted
+   * Storage file is deleted
+   * Database entry is removed
 
----
 
-## 🗃 Database Schema (items table)
 
-```sql
+## Technology Stack
+
+
+
+### Frontend
+
+* React (TypeScript)
+* Vite
+* React Router
+* Tailwind CSS
+
+### Backend
+
+* Node.js
+* Express
+* TypeScript
+* Multer (in-memory file handling)
+
+### Database & Storage
+
+* Supabase PostgreSQL
+* Supabase Storage (private bucket)
+* Service Role key (server-side only)
+
+
+
+## Database Schema
+
+
+
+Table: `items`
+
+```
 id            uuid (primary key)
 type          text ('text' | 'file')
 content       text (nullable)
@@ -129,149 +164,173 @@ view_count    integer
 created_at    timestamptz
 ```
 
----
 
-## 🚀 Setup Instructions
 
-### 1️⃣ Clone Repository
+## API Overview
 
-```bash
+
+
+### Create Vault
+
+```
+POST /api/vault/create
+```
+
+FormData fields:
+
+* `type` → text | file
+* `content`
+* `file`
+* `password` (optional)
+* `expires_at` (optional)
+* `is_one_time`
+
+
+
+### Retrieve Vault
+
+```
+GET /api/vault/:id
+```
+
+
+
+### Download File
+
+```
+GET /api/vault/:id/download
+```
+
+If one-time is enabled, cleanup occurs after successful response.
+
+
+
+## Setup Instructions
+
+
+
+### Clone Repository
+
+```
 git clone https://github.com/your-username/linkvault.git
 cd linkvault
 ```
 
----
 
-### 2️⃣ Supabase Setup
 
-1. Create a project on **Supabase**
-2. Create a **storage bucket** named:
+### Supabase Setup
+
+1. Create a new Supabase project.
+2. Create a private storage bucket named:
 
 ```
 vault
 ```
 
-3. Create the `items` table using the schema above
-4. Copy:
+3. Create the `items` table using the schema above.
+4. Obtain:
 
    * `SUPABASE_URL`
-   * `SERVICE_ROLE_KEY` ⚠️ (never expose to frontend)
+   * `SUPABASE_SERVICE_ROLE_KEY`
 
----
+Do not expose the service role key to the frontend.
 
-### 3️⃣ Backend Setup
 
-```bash
+
+### Backend Setup
+
+```
 cd server
 npm install
 ```
 
 Create `.env`:
 
-```env
+```
 SUPABASE_URL=your_project_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 PORT=4000
 ```
 
-Run server:
+Start server:
 
-```bash
+```
 npm run dev
 ```
 
-Server will start at:
+Runs at:
 
 ```
 http://localhost:4000
 ```
 
----
 
-### 4️⃣ Frontend Setup
 
-```bash
+### Frontend Setup
+
+```
 cd client
 npm install
 npm run dev
 ```
 
-Frontend runs at:
+Runs at:
 
 ```
-http://localhost:5173
+http://localhost:3000
 ```
 
----
 
-## 🔌 API Endpoints
 
-### Create Vault
+## Security Considerations
 
-```http
-POST /api/vault/create
-```
 
-**FormData**
 
-* `type` → `text | file`
-* `content` → string (for text)
-* `file` → file (for file upload)
-* `password` → optional
-* `expires_at` → ISO string
-* `is_one_time` → `"true" | "false"`
+* Service role key is strictly backend-only.
+* Files are never publicly exposed.
+* Expired vaults are inaccessible.
+* No public browsing or indexing.
+* One-time vaults are permanently removed after access.
 
----
 
-### Get Vault Metadata
 
-```http
-GET /api/vault/:id
-```
+## Design Decisions
 
----
 
-### Download File
 
-```http
-GET /api/vault/:id/download
-```
+* UUID-based vault IDs to reduce predictability.
+* Backend-enforced default expiry.
+* Clear separation of upload middleware and route logic.
+* In-memory file handling to avoid disk writes.
+* Centralized validation for access control.
 
-Automatically deletes file if one-time enabled.
 
----
 
-## 🔐 One-Time View Logic (Important)
+## Limitations
 
-* Vault data is returned **first**
-* Cleanup happens **after response**
-* Ensures download works correctly
-* Prevents premature deletion
 
----
 
-## ⚠️ Security Notes
+* Passwords are currently stored as plain text.
+* No scheduled background cleanup process.
+* No authentication or user accounts.
+* No rate limiting implemented.
 
-* Supabase **Service Role Key is server-only**
-* Client never directly accesses Supabase
-* All file downloads go through backend
-* Storage bucket rules can be private
 
----
 
-## 🛣 Future Enhancements
+## Future Improvements
 
-* 🔑 Password hashing (bcrypt)
-* 🧹 Scheduled cleanup jobs
-* 📊 Analytics dashboard
-* 📎 Multiple file uploads
-* 📦 Zip downloads
-* 🔐 Signed URLs
 
----
 
-## 👨‍💻 Author
+* Hash passwords using bcrypt.
+* Add request rate limiting.
+* Implement scheduled cleanup jobs.
+* Add file size validation.
+* Containerize with Docker.
+* Add deployment pipeline.
 
-**Harsh Jain**
-Built with a focus on **security, architecture clarity, and real-world practices**.
+
+
+## Author
+
+Harsh Jain
 
