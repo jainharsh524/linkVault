@@ -119,8 +119,18 @@ const VaultView: React.FC<VaultViewProps> = ({ id }) => {
         </h2>
 
         {item?.type === VaultType.TEXT ? (
-          <pre className="bg-gray-900 text-white p-4 rounded">
+          <pre className="bg-gray-900 text-white p-4 rounded relative">
             {item.content}
+
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(item.content);
+                alert("Copied to clipboard!");
+              }}
+              className="ml-80 px-4 py-2 bg-[#000000] text-white rounded-md text-sm font-medium hover:bg-[#5A5A5A] transition-colors"
+             >
+              Copy
+            </button>
           </pre>
         ) : (
           <button
